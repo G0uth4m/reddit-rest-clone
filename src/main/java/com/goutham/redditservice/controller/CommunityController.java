@@ -5,6 +5,7 @@ import com.goutham.redditservice.dto.CommunityCreationDTO;
 import com.goutham.redditservice.dto.CommunityDTO;
 import com.goutham.redditservice.dto.CommunityJoinDTO;
 import com.goutham.redditservice.dto.CommunityUpdationDTO;
+import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.service.CommunityService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -112,5 +113,22 @@ public class CommunityController {
     @DeleteMapping("/{communityName}/members/{username}")
     public void leaveCommunity(@PathVariable String communityName, @PathVariable String username) {
         communityService.removeMemberFromCommunity(communityName, username);
+    }
+
+    @GetMapping("/{communityName}/posts")
+    public CollectionModel<EntityModel<PostDTO>> getPosts(@PathVariable String communityName, Pageable pageable) {
+        List<PostDTO> posts = communityService.getCommunityPosts(communityName, pageable);
+
+        List<EntityModel<PostDTO>> postEntityModels = posts.stream()
+                .map(postDTO -> EntityModel.of(
+                        postDTO,
+                        linkTo(methodOn(PostController.class).getPost(postDTO.getPostId())).withSelfRel(),
+                        linkTo(methodOn(CommunityController.class).getPosts(communityName, Pageable.unpaged())).withRel("posts")))
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(
+                postEntityModels,
+                linkTo(methodOn(CommunityController.class).getPosts(communityName, Pageable.unpaged())).withRel("posts")
+        );
     }
 }

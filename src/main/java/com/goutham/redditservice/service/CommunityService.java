@@ -5,14 +5,17 @@ import com.goutham.redditservice.dto.CommunityCreationDTO;
 import com.goutham.redditservice.dto.CommunityDTO;
 import com.goutham.redditservice.dto.CommunityJoinDTO;
 import com.goutham.redditservice.dto.CommunityUpdationDTO;
+import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Community;
+import com.goutham.redditservice.entity.Post;
 import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
 import com.goutham.redditservice.exception.AppUserNotFoundException;
 import com.goutham.redditservice.exception.CommunityAlreadyExistsException;
 import com.goutham.redditservice.exception.CommunityNotFoundException;
 import com.goutham.redditservice.repository.CommunityRepository;
 import com.goutham.redditservice.repository.AppUserRepository;
+import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -33,6 +36,9 @@ public class CommunityService {
 
     @Autowired
     private AppUserRepository appUserRepository;
+
+    @Autowired
+    private PostRepository postRepository;
 
     public CommunityDTO createCommunity(CommunityCreationDTO communityCreationDTO) {
         AppUser appUser = appUserRepository.findByUsername(communityCreationDTO.getCreatedBy()).orElseThrow(() -> {
@@ -75,6 +81,7 @@ public class CommunityService {
         });
         community.setAbout(communityUpdationDTO.getAbout());
         community.setProfilePicUrl(communityUpdationDTO.getProfilePicUrl());
+        community.setUpdatedAt(LocalDateTime.now());
         Community updatedCommunity = communityRepository.save(community);
 
         return CommunityDTO.builder()
@@ -176,5 +183,18 @@ public class CommunityService {
 
         community.getMembers().remove(appUser);
         communityRepository.save(community);
+    }
+
+    public List<PostDTO> getCommunityPosts(String communityName, Pageable pageable) {
+        Page<Post> postsPage = postRepository.findAllByCommunity_CommunityName(communityName, pageable);
+        return postsPage.stream()
+                .map(post -> PostDTO.builder()
+                        .postId(post.getPostId())
+                        .title(post.getTitle())
+                        .author(post.getAuthor().getUsername())
+                        .content(post.getContent())
+                        .community(post.getCommunity().getCommunityName())
+                        .build())
+                .collect(Collectors.toList());
     }
 }
