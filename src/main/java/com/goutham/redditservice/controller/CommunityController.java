@@ -1,7 +1,9 @@
 package com.goutham.redditservice.controller;
 
+import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.CommunityCreationDTO;
 import com.goutham.redditservice.dto.CommunityDTO;
+import com.goutham.redditservice.dto.CommunityJoinDTO;
 import com.goutham.redditservice.dto.CommunityUpdationDTO;
 import com.goutham.redditservice.service.CommunityService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,5 +85,32 @@ public class CommunityController {
     @DeleteMapping("/{communityName}")
     public void deleteCommunity(@PathVariable String communityName) {
         communityService.deleteCommunity(communityName);
+    }
+
+    @GetMapping("/{communityName}/members")
+    public CollectionModel<EntityModel<AppUserDTO>> getCommunityMembers(@PathVariable String communityName) {
+        List<AppUserDTO> communityMembers = communityService.getCommunityMembers(communityName);
+
+        List<EntityModel<AppUserDTO>> communityMemberEntityModels = communityMembers.stream()
+                .map(communityMember -> EntityModel.of(
+                        communityMember,
+                        linkTo(methodOn(AppUserController.class).getAppUser(communityMember.getUsername())).withSelfRel(),
+                        linkTo(methodOn(AppUserController.class).getAppUsers(Pageable.unpaged())).withRel("users")))
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(
+                communityMemberEntityModels,
+                linkTo(methodOn(CommunityController.class).getCommunityMembers(communityName)).withSelfRel()
+        );
+    }
+
+    @PostMapping("/{communityName}/members")
+    public void joinCommunity(@PathVariable String communityName, @RequestBody CommunityJoinDTO communityJoinDTO) {
+        communityService.addMemberToCommunity(communityName, communityJoinDTO);
+    }
+
+    @DeleteMapping("/{communityName}/members/{username}")
+    public void leaveCommunity(@PathVariable String communityName, @PathVariable String username) {
+        communityService.removeMemberFromCommunity(communityName, username);
     }
 }

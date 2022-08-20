@@ -1,10 +1,13 @@
 package com.goutham.redditservice.service;
 
+import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.CommunityCreationDTO;
 import com.goutham.redditservice.dto.CommunityDTO;
+import com.goutham.redditservice.dto.CommunityJoinDTO;
 import com.goutham.redditservice.dto.CommunityUpdationDTO;
 import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Community;
+import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
 import com.goutham.redditservice.exception.AppUserNotFoundException;
 import com.goutham.redditservice.exception.CommunityAlreadyExistsException;
 import com.goutham.redditservice.exception.CommunityNotFoundException;
@@ -48,7 +51,7 @@ public class CommunityService {
                 .about(communityCreationDTO.getAbout())
                 .profilePicUrl(communityCreationDTO.getProfilePicUrl())
                 .createdBy(appUser)
-                .members(Collections.emptyList())
+                .members(Collections.emptySet())
                 .isDeleted(false)
                 .createdAt(currentDateTime)
                 .updatedAt(currentDateTime)
@@ -117,5 +120,61 @@ public class CommunityService {
             return new AppUserNotFoundException("Community does not exist");
         });
         communityRepository.deleteById(community.getCommunityId());
+    }
+
+    public List<AppUserDTO> getCommunityMembers(String communityName) {
+        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
+            log.error("Community: {} does not exist", communityName);
+            return new CommunityNotFoundException("Community does not exist");
+        });
+        return community.getMembers().stream()
+                .map(appUser -> AppUserDTO.builder()
+                        .userId(appUser.getUserId())
+                        .username(appUser.getUsername())
+                        .email(appUser.getEmail())
+                        .profilePicUrl(appUser.getProfilePicUrl())
+                        .karma(appUser.getKarma())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    public void addMemberToCommunity(String communityName, CommunityJoinDTO communityJoinDTO) {
+        AppUser appUser = appUserRepository.findByUsername(communityJoinDTO.getUsername()).orElseThrow(() -> {
+            log.error("User: {} does not exist", communityJoinDTO.getUsername());
+            return new AppUserNotFoundException("User does not exist");
+        });
+
+        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
+            log.error("Community: {} does not exist", communityName);
+            return new CommunityNotFoundException("Community does not exist");
+        });
+
+        if (community.getMembers().contains(appUser)) {
+            log.error("User: {} already part of community: {}", appUser.getUsername(), community.getCommunityName());
+            throw new AppUserAlreadyExistsException("User already part of community");
+        }
+
+        community.getMembers().add(appUser);
+        communityRepository.save(community);
+    }
+
+    public void removeMemberFromCommunity(String communityName, String username) {
+        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
+            log.error("User: {} does not exist", username);
+            return new AppUserNotFoundException("User does not exist");
+        });
+
+        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
+            log.error("Community: {} does not exist", communityName);
+            return new CommunityNotFoundException("Community does not exist");
+        });
+
+        if (!community.getMembers().contains(appUser)) {
+            log.error("User: {} not part of community: {}", appUser.getUsername(), community.getCommunityName());
+            throw new AppUserAlreadyExistsException("User not part of community");
+        }
+
+        community.getMembers().remove(appUser);
+        communityRepository.save(community);
     }
 }
