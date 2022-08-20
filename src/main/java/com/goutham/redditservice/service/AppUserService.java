@@ -4,10 +4,13 @@ import com.goutham.redditservice.constant.AppConstants;
 import com.goutham.redditservice.dto.AppUserCreationDTO;
 import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.AppUserUpdationDTO;
+import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.entity.AppUser;
+import com.goutham.redditservice.entity.Post;
 import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
 import com.goutham.redditservice.exception.AppUserNotFoundException;
 import com.goutham.redditservice.repository.AppUserRepository;
+import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -26,6 +29,9 @@ public class AppUserService {
 
     @Autowired
     private AppUserRepository appUserRepository;
+
+    @Autowired
+    private PostRepository postRepository;
 
     public AppUserDTO createAppUser(AppUserCreationDTO appUserCreationDTO) {
         if (appUserRepository.existsByUsername(appUserCreationDTO.getUsername())) {
@@ -63,6 +69,7 @@ public class AppUserService {
         });
         appUser.setEmail(appUserUpdationDTO.getEmail());
         appUser.setProfilePicUrl(appUserUpdationDTO.getProfilePicUrl());
+        appUser.setUpdatedAt(LocalDateTime.now());
         AppUser updatedAppUser = appUserRepository.save(appUser);
 
         return AppUserDTO.builder()
@@ -116,5 +123,23 @@ public class AppUserService {
             return new AppUserNotFoundException("User does not exist");
         });
         appUserRepository.deleteById(appUser.getUserId());
+    }
+
+    public List<PostDTO> getPostsByUser(String username, Pageable pageable) {
+        if (!appUserRepository.existsByUsername(username)) {
+            log.error("User: {} does not exist", username);
+            throw new AppUserNotFoundException("User does not exist");
+        }
+
+        Page<Post> postsPage = postRepository.findAllByAuthor_Username(username, pageable);
+        return postsPage.stream()
+                .map(post -> PostDTO.builder()
+                        .postId(post.getPostId())
+                        .title(post.getTitle())
+                        .author(post.getAuthor().getUsername())
+                        .content(post.getContent())
+                        .community(post.getCommunity().getCommunityName())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

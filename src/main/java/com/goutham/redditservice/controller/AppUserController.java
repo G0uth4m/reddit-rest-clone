@@ -3,12 +3,20 @@ package com.goutham.redditservice.controller;
 import com.goutham.redditservice.dto.AppUserCreationDTO;
 import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.AppUserUpdationDTO;
+import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.service.AppUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -77,5 +85,22 @@ public class AppUserController {
     @DeleteMapping("/{username}")
     public void deleteAppUser(@PathVariable String username) {
         appUserService.deleteAppUser(username);
+    }
+
+    @GetMapping("/{username}/posts")
+    public CollectionModel<EntityModel<PostDTO>> getPosts(@PathVariable String username, Pageable pageable) {
+        List<PostDTO> posts = appUserService.getPostsByUser(username, pageable);
+
+        List<EntityModel<PostDTO>> postEntityModels = posts.stream()
+                .map(postDTO -> EntityModel.of(
+                        postDTO,
+                        linkTo(methodOn(PostController.class).getPost(postDTO.getPostId())).withSelfRel(),
+                        linkTo(methodOn(AppUserController.class).getPosts(username, Pageable.unpaged())).withRel("posts")))
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(
+                postEntityModels,
+                linkTo(methodOn(AppUserController.class).getPosts(username, Pageable.unpaged())).withRel("posts")
+        );
     }
 }
