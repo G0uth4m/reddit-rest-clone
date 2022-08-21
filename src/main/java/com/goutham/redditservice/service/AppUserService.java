@@ -139,6 +139,8 @@ public class AppUserService {
                         .author(post.getAuthor().getUsername())
                         .content(post.getContent())
                         .community(post.getCommunity().getCommunityName())
+                        .votes((long) (post.getUpvotes().size() - post.getDownvotes().size()))
+                        .createdAt(post.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
     }

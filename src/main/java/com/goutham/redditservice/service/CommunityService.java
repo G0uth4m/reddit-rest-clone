@@ -57,7 +57,7 @@ public class CommunityService {
                 .about(communityCreationDTO.getAbout())
                 .profilePicUrl(communityCreationDTO.getProfilePicUrl())
                 .createdBy(appUser)
-                .members(Collections.emptySet())
+                .members(Collections.singleton(appUser))
                 .isDeleted(false)
                 .createdAt(currentDateTime)
                 .updatedAt(currentDateTime)
@@ -194,6 +194,8 @@ public class CommunityService {
                         .author(post.getAuthor().getUsername())
                         .content(post.getContent())
                         .community(post.getCommunity().getCommunityName())
+                        .votes((long) (post.getUpvotes().size() - post.getDownvotes().size()))
+                        .createdAt(post.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
     }
