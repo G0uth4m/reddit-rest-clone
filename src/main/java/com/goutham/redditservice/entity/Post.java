@@ -13,9 +13,11 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Entity
@@ -43,6 +45,12 @@ public class Post {
 
     @ManyToOne
     private Community community;
+
+    @ManyToMany
+    private Set<AppUser> upvotes;
+
+    @ManyToMany
+    private Set<AppUser> downvotes;
 
     @Column(name = "IS_DELETED")
     private Boolean isDeleted;

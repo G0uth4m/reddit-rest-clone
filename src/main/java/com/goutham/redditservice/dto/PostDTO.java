@@ -3,6 +3,8 @@ package com.goutham.redditservice.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 public class PostDTO {
@@ -11,4 +13,6 @@ public class PostDTO {
     private String content;
     private String author;
     private String community;
+    private Long votes;
+    private LocalDateTime createdAt;
 }
