@@ -63,10 +63,7 @@ public class AppUserService {
     }
 
     public AppUserDTO updateAppUser(String username, AppUserUpdationDTO appUserUpdationDTO) {
-        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
-            log.error("User: {} does not exist", username);
-            return new AppUserNotFoundException("User does not exist");
-        });
+        AppUser appUser = getUserDAO(username);
         appUser.setEmail(appUserUpdationDTO.getEmail());
         appUser.setProfilePicUrl(appUserUpdationDTO.getProfilePicUrl());
         appUser.setUpdatedAt(LocalDateTime.now());
@@ -82,11 +79,7 @@ public class AppUserService {
     }
 
     public AppUserDTO getAppUser(String username) {
-        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
-            log.error("User: {} does not exist", username);
-            return new AppUserNotFoundException("User does not exist");
-        });
-
+        AppUser appUser = getUserDAO(username);
         return AppUserDTO.builder()
                 .userId(appUser.getUserId())
                 .username(appUser.getUsername())
@@ -118,10 +111,7 @@ public class AppUserService {
     }
 
     public void deleteAppUser(String username) {
-        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
-            log.error("User: {} does not exist", username);
-            return new AppUserNotFoundException("User does not exist");
-        });
+        AppUser appUser = getUserDAO(username);
         appUserRepository.deleteById(appUser.getUserId());
     }
 
@@ -143,5 +133,12 @@ public class AppUserService {
                         .createdAt(post.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    public AppUser getUserDAO(String username) {
+        return appUserRepository.findByUsername(username).orElseThrow(() -> {
+            log.error("User: {} does not exist", username);
+            return new AppUserNotFoundException("User does not exist");
+        });
     }
 }

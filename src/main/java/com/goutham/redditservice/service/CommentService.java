@@ -6,12 +6,8 @@ import com.goutham.redditservice.dto.CommentUpdationDTO;
 import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Comment;
 import com.goutham.redditservice.entity.Post;
-import com.goutham.redditservice.exception.AppUserNotFoundException;
 import com.goutham.redditservice.exception.CommentNotFoundException;
-import com.goutham.redditservice.exception.PostNotFoundException;
-import com.goutham.redditservice.repository.AppUserRepository;
 import com.goutham.redditservice.repository.CommentRepository;
-import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -30,21 +26,14 @@ public class CommentService {
     private CommentRepository commentRepository;
 
     @Autowired
-    private PostRepository postRepository;
+    private AppUserService appUserService;
 
     @Autowired
-    private AppUserRepository appUserRepository;
+    private PostService postService;
 
     public CommentDTO createComment(Long postId, CommentCreationDTO commentCreationDTO) {
-        AppUser appUser = appUserRepository.findByUsername(commentCreationDTO.getAuthor()).orElseThrow(() -> {
-            log.error("User: {} does not exist", commentCreationDTO.getAuthor());
-            return new AppUserNotFoundException("User does not exist");
-        });
-
-        Post post = postRepository.findById(postId).orElseThrow(() -> {
-            log.error("Post with id: {} does not exist", postId);
-            return new PostNotFoundException("Post does not exist");
-        });
+        AppUser appUser = appUserService.getUserDAO(commentCreationDTO.getAuthor());
+        Post post = postService.getPostDAO(postId);
 
         LocalDateTime now = LocalDateTime.now();
         Comment comment = Comment.builder()
@@ -68,11 +57,7 @@ public class CommentService {
     }
 
     public CommentDTO editComment(Long commentId, CommentUpdationDTO commentUpdationDTO) {
-        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> {
-            log.error("Comment with id: {} does not exist", commentId);
-            return new CommentNotFoundException("Comment does not exist");
-        });
-
+        Comment comment = getCommentDAO(commentId);
         comment.setContent(commentUpdationDTO.getContent());
         comment.setUpdatedAt(LocalDateTime.now());
         Comment savedComment = commentRepository.save(comment);
@@ -88,7 +73,6 @@ public class CommentService {
 
     public List<CommentDTO> getComments(Long postId, Pageable pageable) {
         Page<Comment> commentPage = commentRepository.findAllByPost_PostId(postId, pageable);
-
         return commentPage.stream()
                 .map(comment -> CommentDTO.builder()
                         .commentId(comment.getCommentId())
@@ -101,11 +85,7 @@ public class CommentService {
     }
 
     public CommentDTO getComment(Long commentId) {
-        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> {
-            log.error("Comment with id: {} does not exist", commentId);
-            return new CommentNotFoundException("Comment does not exist");
-        });
-
+        Comment comment = getCommentDAO(commentId);
         return CommentDTO.builder()
                 .commentId(comment.getCommentId())
                 .content(comment.getContent())
@@ -121,5 +101,12 @@ public class CommentService {
             throw new CommentNotFoundException("Comment does not exist");
         }
         commentRepository.deleteById(commentId);
+    }
+
+    public Comment getCommentDAO(Long commentId) {
+        return commentRepository.findById(commentId).orElseThrow(() -> {
+            log.error("Comment with id: {} does not exist", commentId);
+            return new CommentNotFoundException("Comment does not exist");
+        });
     }
 }

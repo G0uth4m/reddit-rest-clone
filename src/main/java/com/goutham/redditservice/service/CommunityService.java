@@ -10,11 +10,9 @@ import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Community;
 import com.goutham.redditservice.entity.Post;
 import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
-import com.goutham.redditservice.exception.AppUserNotFoundException;
 import com.goutham.redditservice.exception.CommunityAlreadyExistsException;
 import com.goutham.redditservice.exception.CommunityNotFoundException;
 import com.goutham.redditservice.repository.CommunityRepository;
-import com.goutham.redditservice.repository.AppUserRepository;
 import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,18 +32,15 @@ public class CommunityService {
     @Autowired
     private CommunityRepository communityRepository;
 
-    @Autowired
-    private AppUserRepository appUserRepository;
 
     @Autowired
     private PostRepository postRepository;
 
-    public CommunityDTO createCommunity(CommunityCreationDTO communityCreationDTO) {
-        AppUser appUser = appUserRepository.findByUsername(communityCreationDTO.getCreatedBy()).orElseThrow(() -> {
-            log.error("User: {} does not exist", communityCreationDTO.getCreatedBy());
-            return new AppUserNotFoundException("User does not exist");
-        });
+    @Autowired
+    private AppUserService appUserService;
 
+    public CommunityDTO createCommunity(CommunityCreationDTO communityCreationDTO) {
+        AppUser appUser = appUserService.getUserDAO(communityCreationDTO.getCreatedBy());
         if (communityRepository.existsByCommunityName(communityCreationDTO.getCommunityName())) {
             log.error("Community: {} already exists", communityCreationDTO.getCommunityName());
             throw new CommunityAlreadyExistsException("Community already exists");
@@ -75,10 +70,7 @@ public class CommunityService {
     }
 
     public CommunityDTO updateCommunity(String communityName, CommunityUpdationDTO communityUpdationDTO) {
-        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
-            log.error("Community: {} does not exist", communityName);
-            return new CommunityNotFoundException("Community does not exist");
-        });
+        Community community = getCommunityDAO(communityName);
         community.setAbout(communityUpdationDTO.getAbout());
         community.setProfilePicUrl(communityUpdationDTO.getProfilePicUrl());
         community.setUpdatedAt(LocalDateTime.now());
@@ -94,11 +86,7 @@ public class CommunityService {
     }
 
     public CommunityDTO getCommunity(String communityName) {
-        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
-            log.error("Community: {} does not exist", communityName);
-            return new CommunityNotFoundException("Community does not exist");
-        });
-
+        Community community = getCommunityDAO(communityName);
         return CommunityDTO.builder()
                 .communityId(community.getCommunityId())
                 .communityName(community.getCommunityName())
@@ -122,18 +110,12 @@ public class CommunityService {
     }
 
     public void deleteCommunity(String communityName) {
-        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
-            log.error("Community: {} does not exist", communityName);
-            return new AppUserNotFoundException("Community does not exist");
-        });
+        Community community = getCommunityDAO(communityName);
         communityRepository.deleteById(community.getCommunityId());
     }
 
     public List<AppUserDTO> getCommunityMembers(String communityName) {
-        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
-            log.error("Community: {} does not exist", communityName);
-            return new CommunityNotFoundException("Community does not exist");
-        });
+        Community community = getCommunityDAO(communityName);
         return community.getMembers().stream()
                 .map(appUser -> AppUserDTO.builder()
                         .userId(appUser.getUserId())
@@ -146,41 +128,25 @@ public class CommunityService {
     }
 
     public void addMemberToCommunity(String communityName, CommunityJoinDTO communityJoinDTO) {
-        AppUser appUser = appUserRepository.findByUsername(communityJoinDTO.getUsername()).orElseThrow(() -> {
-            log.error("User: {} does not exist", communityJoinDTO.getUsername());
-            return new AppUserNotFoundException("User does not exist");
-        });
-
-        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
-            log.error("Community: {} does not exist", communityName);
-            return new CommunityNotFoundException("Community does not exist");
-        });
+        AppUser appUser = appUserService.getUserDAO(communityJoinDTO.getUsername());
+        Community community = getCommunityDAO(communityName);
 
         if (community.getMembers().contains(appUser)) {
             log.error("User: {} already part of community: {}", appUser.getUsername(), community.getCommunityName());
             throw new AppUserAlreadyExistsException("User already part of community");
         }
-
         community.getMembers().add(appUser);
         communityRepository.save(community);
     }
 
     public void removeMemberFromCommunity(String communityName, String username) {
-        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
-            log.error("User: {} does not exist", username);
-            return new AppUserNotFoundException("User does not exist");
-        });
-
-        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
-            log.error("Community: {} does not exist", communityName);
-            return new CommunityNotFoundException("Community does not exist");
-        });
+        AppUser appUser = appUserService.getUserDAO(username);
+        Community community = getCommunityDAO(communityName);
 
         if (!community.getMembers().contains(appUser)) {
             log.error("User: {} not part of community: {}", appUser.getUsername(), community.getCommunityName());
             throw new AppUserAlreadyExistsException("User not part of community");
         }
-
         community.getMembers().remove(appUser);
         communityRepository.save(community);
     }
@@ -198,5 +164,12 @@ public class CommunityService {
                         .createdAt(post.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    public Community getCommunityDAO(String communityName) {
+        return communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
+            log.error("Community: {} does not exist", communityName);
+            return new CommunityNotFoundException("Community does not exist");
+        });
     }
 }
