@@ -5,14 +5,10 @@ import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Community;
 import com.goutham.redditservice.entity.Post;
-import com.goutham.redditservice.exception.AppUserNotFoundException;
 import com.goutham.redditservice.exception.AppUserNotMemberOfCommunityException;
-import com.goutham.redditservice.exception.CommunityNotFoundException;
 import com.goutham.redditservice.exception.DuplicateVoteException;
 import com.goutham.redditservice.exception.PostNotFoundException;
 import com.goutham.redditservice.exception.VoteNotFoundException;
-import com.goutham.redditservice.repository.AppUserRepository;
-import com.goutham.redditservice.repository.CommunityRepository;
 import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,21 +25,14 @@ public class PostService {
     private PostRepository postRepository;
 
     @Autowired
-    private AppUserRepository appUserRepository;
+    private AppUserService appUserService;
 
     @Autowired
-    private CommunityRepository communityRepository;
+    private CommunityService communityService;
 
     public PostDTO createPost(PostCreationDTO postCreationDTO) {
-        AppUser appUser = appUserRepository.findByUsername(postCreationDTO.getAuthor()).orElseThrow(() -> {
-            log.error("User: {} does not exist", postCreationDTO.getAuthor());
-            return new AppUserNotFoundException("User does not exist");
-        });
-
-        Community community = communityRepository.findByCommunityName(postCreationDTO.getCommunity()).orElseThrow(() -> {
-            log.error("Community: {} does not exist", postCreationDTO.getCommunity());
-            return new CommunityNotFoundException("Community does not exist");
-        });
+        AppUser appUser = appUserService.getUserDAO(postCreationDTO.getAuthor());
+        Community community = communityService.getCommunityDAO(postCreationDTO.getCommunity());
 
         if (!community.getMembers().contains(appUser)) {
             log.error("User: {} not member of community: {}", appUser.getUsername(), community.getCommunityName());
@@ -76,10 +65,7 @@ public class PostService {
     }
 
     public PostDTO getPost(Long postId) {
-        Post post = postRepository.findById(postId).orElseThrow(() -> {
-            log.error("Post with id: {} does not exist", postId);
-            return new PostNotFoundException("Post does not exist");
-        });
+        Post post = getPostDAO(postId);
 
         return PostDTO.builder()
                 .postId(post.getPostId())
@@ -101,15 +87,8 @@ public class PostService {
     }
 
     public PostDTO upvotePost(Long postId, String username) {
-        Post post = postRepository.findById(postId).orElseThrow(() -> {
-            log.error("Post with id: {} does not exist", postId);
-            return new PostNotFoundException("Post does not exist");
-        });
-
-        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
-            log.error("User: {} does not exist", username);
-            return new AppUserNotFoundException("User does not exist");
-        });
+        Post post = getPostDAO(postId);
+        AppUser appUser = appUserService.getUserDAO(username);
 
         if (post.getUpvotes().contains(appUser)) {
             log.error("Duplicate upvote by user: {} on post: {}", username, post);
@@ -132,15 +111,8 @@ public class PostService {
     }
 
     public PostDTO removeUpvote(Long postId, String username) {
-        Post post = postRepository.findById(postId).orElseThrow(() -> {
-            log.error("Post with id: {} does not exist", postId);
-            return new PostNotFoundException("Post does not exist");
-        });
-
-        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
-            log.error("User: {} does not exist", username);
-            return new AppUserNotFoundException("User does not exist");
-        });
+        Post post = getPostDAO(postId);
+        AppUser appUser = appUserService.getUserDAO(username);
 
         if (!post.getUpvotes().contains(appUser)) {
             log.error("Upvote not found for post: {} by user: {}", postId, username);
@@ -162,15 +134,8 @@ public class PostService {
     }
 
     public PostDTO downvotePost(Long postId, String username) {
-        Post post = postRepository.findById(postId).orElseThrow(() -> {
-            log.error("Post with id: {} does not exist", postId);
-            return new PostNotFoundException("Post does not exist");
-        });
-
-        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
-            log.error("User: {} does not exist", username);
-            return new AppUserNotFoundException("User does not exist");
-        });
+        Post post = getPostDAO(postId);
+        AppUser appUser = appUserService.getUserDAO(username);
 
         if (post.getDownvotes().contains(appUser)) {
             log.error("Duplicate upvote by user: {} on post: {}", username, post);
@@ -193,15 +158,8 @@ public class PostService {
     }
 
     public PostDTO removeDownvote(Long postId, String username) {
-        Post post = postRepository.findById(postId).orElseThrow(() -> {
-            log.error("Post with id: {} does not exist", postId);
-            return new PostNotFoundException("Post does not exist");
-        });
-
-        AppUser appUser = appUserRepository.findByUsername(username).orElseThrow(() -> {
-            log.error("User: {} does not exist", username);
-            return new AppUserNotFoundException("User does not exist");
-        });
+        Post post = getPostDAO(postId);
+        AppUser appUser = appUserService.getUserDAO(username);
 
         if (!post.getDownvotes().contains(appUser)) {
             log.error("Downvote not found for post: {} by user: {}", postId, username);
@@ -220,5 +178,12 @@ public class PostService {
                 .votes((long) (savedPost.getUpvotes().size() - savedPost.getDownvotes().size()))
                 .createdAt(savedPost.getCreatedAt())
                 .build();
+    }
+
+    public Post getPostDAO(Long postId) {
+        return postRepository.findById(postId).orElseThrow(() -> {
+            log.error("Post with id: {} does not exist", postId);
+            return new PostNotFoundException("Post does not exist");
+        });
     }
 }
