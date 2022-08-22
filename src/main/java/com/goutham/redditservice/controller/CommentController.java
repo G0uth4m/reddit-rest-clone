@@ -4,6 +4,7 @@ import com.goutham.redditservice.dto.CommentCreationDTO;
 import com.goutham.redditservice.dto.CommentDTO;
 import com.goutham.redditservice.dto.CommentUpdationDTO;
 import com.goutham.redditservice.service.CommentService;
+import org.springdoc.api.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.hateoas.CollectionModel;
@@ -74,7 +75,7 @@ public class CommentController {
     }
 
     @GetMapping
-    public CollectionModel<EntityModel<CommentDTO>> getComments(@PathVariable Long postId, Pageable pageable) {
+    public CollectionModel<EntityModel<CommentDTO>> getComments(@PathVariable Long postId, @ParameterObject Pageable pageable) {
         List<CommentDTO> comments = commentService.getComments(postId, pageable);
         List<EntityModel<CommentDTO>> commentEntityModels = comments.stream()
                 .map(commentDTO -> EntityModel.of(

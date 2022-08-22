@@ -5,6 +5,7 @@ import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.AppUserUpdationDTO;
 import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.service.AppUserService;
+import org.springdoc.api.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.hateoas.CollectionModel;
@@ -66,7 +67,7 @@ public class AppUserController {
     }
 
     @GetMapping
-    public CollectionModel<EntityModel<AppUserDTO>> getAppUsers(Pageable pageable) {
+    public CollectionModel<EntityModel<AppUserDTO>> getAppUsers(@ParameterObject Pageable pageable) {
         List<AppUserDTO> appUsers = appUserService.getAppUsers(pageable);
 
         List<EntityModel<AppUserDTO>> appUserEntityModels = appUsers.stream()
@@ -88,7 +89,7 @@ public class AppUserController {
     }
 
     @GetMapping("/{username}/posts")
-    public CollectionModel<EntityModel<PostDTO>> getPosts(@PathVariable String username, Pageable pageable) {
+    public CollectionModel<EntityModel<PostDTO>> getPosts(@PathVariable String username, @ParameterObject Pageable pageable) {
         List<PostDTO> posts = appUserService.getPostsByUser(username, pageable);
 
         List<EntityModel<PostDTO>> postEntityModels = posts.stream()
