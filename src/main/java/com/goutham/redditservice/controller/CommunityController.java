@@ -7,6 +7,7 @@ import com.goutham.redditservice.dto.CommunityJoinDTO;
 import com.goutham.redditservice.dto.CommunityUpdationDTO;
 import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.service.CommunityService;
+import org.springdoc.api.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.hateoas.CollectionModel;
@@ -67,7 +68,7 @@ public class CommunityController {
     }
 
     @GetMapping
-    public CollectionModel<EntityModel<CommunityDTO>> getCommunities(Pageable pageable) {
+    public CollectionModel<EntityModel<CommunityDTO>> getCommunities(@ParameterObject Pageable pageable) {
         List<CommunityDTO> communities = communityService.getCommunities(pageable);
 
         List<EntityModel<CommunityDTO>> communityEntityModels = communities.stream()
@@ -116,7 +117,10 @@ public class CommunityController {
     }
 
     @GetMapping("/{communityName}/posts")
-    public CollectionModel<EntityModel<PostDTO>> getPosts(@PathVariable String communityName, Pageable pageable) {
+    public CollectionModel<EntityModel<PostDTO>> getPosts(
+            @PathVariable String communityName,
+            @ParameterObject Pageable pageable
+    ) {
         List<PostDTO> posts = communityService.getCommunityPosts(communityName, pageable);
 
         List<EntityModel<PostDTO>> postEntityModels = posts.stream()

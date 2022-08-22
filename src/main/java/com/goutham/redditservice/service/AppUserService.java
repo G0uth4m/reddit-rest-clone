@@ -1,6 +1,5 @@
 package com.goutham.redditservice.service;
 
-import com.goutham.redditservice.constant.AppConstants;
 import com.goutham.redditservice.dto.AppUserCreationDTO;
 import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.AppUserUpdationDTO;
@@ -14,9 +13,8 @@ import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -90,14 +88,6 @@ public class AppUserService {
     }
 
     public List<AppUserDTO> getAppUsers(Pageable pageable) {
-        if (pageable.isUnpaged()) {
-            pageable = PageRequest.of(
-                    AppConstants.DEFAULT_PAGE_NUMBER,
-                    AppConstants.DEFAULT_PAGE_SIZE,
-                    Sort.by(AppConstants.DEFAULT_SORT_BY)
-            );
-        }
-
         Page<AppUser> appUserPage = appUserRepository.findAll(pageable);
         return appUserPage.stream()
                 .map(appUser -> AppUserDTO.builder()
