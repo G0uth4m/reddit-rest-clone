@@ -8,13 +8,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Entity
@@ -23,7 +19,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Where(clause = "IS_DELETED = false")
 @SQLDelete(sql = "UPDATE " + AppConstants.APP_USERS_TABLE + " SET IS_DELETED = true WHERE USER_ID = ?")
-@Table(name = AppConstants.APP_USERS_TABLE)
+@Table(name = AppConstants.APP_USERS_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
 public class AppUser {
 
     @Id
@@ -45,6 +41,14 @@ public class AppUser {
 
     @Column(name = "KARMA")
     private Integer karma;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "communities_members",
+            joinColumns = {@JoinColumn(name = "members_user_id")},
+            inverseJoinColumns = {@JoinColumn(name = "community_community_id")}
+    )
+    private Set<Community> communities;
 
     @Column(name = "IS_DELETED")
     private Boolean isDeleted;

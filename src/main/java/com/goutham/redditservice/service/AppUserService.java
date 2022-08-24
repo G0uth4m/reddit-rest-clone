@@ -3,12 +3,15 @@ package com.goutham.redditservice.service;
 import com.goutham.redditservice.dto.AppUserCreationDTO;
 import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.AppUserUpdationDTO;
+import com.goutham.redditservice.dto.CommunityDTO;
 import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.entity.AppUser;
+import com.goutham.redditservice.entity.Community;
 import com.goutham.redditservice.entity.Post;
 import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
 import com.goutham.redditservice.exception.AppUserNotFoundException;
 import com.goutham.redditservice.repository.AppUserRepository;
+import com.goutham.redditservice.repository.CommunityRepository;
 import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +33,9 @@ public class AppUserService {
 
     @Autowired
     private PostRepository postRepository;
+
+    @Autowired
+    private CommunityRepository communityRepository;
 
     public AppUserDTO createAppUser(AppUserCreationDTO appUserCreationDTO) {
         if (appUserRepository.existsByUsername(appUserCreationDTO.getUsername())) {
@@ -130,5 +136,18 @@ public class AppUserService {
             log.error("User: {} does not exist", username);
             return new AppUserNotFoundException("User does not exist");
         });
+    }
+
+    public List<CommunityDTO> getUserCommunities(String username, Pageable pageable) {
+        Page<Community> communitiesPage = communityRepository.findAllByMembers_Username(username, pageable);
+        return communitiesPage.stream()
+                .map(community -> CommunityDTO.builder()
+                        .communityId(community.getCommunityId())
+                        .communityName(community.getCommunityName())
+                        .about(community.getAbout())
+                        .profilePicUrl(community.getProfilePicUrl())
+                        .createdBy(community.getCreatedBy().getUsername())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

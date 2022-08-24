@@ -10,6 +10,7 @@ import org.hibernate.annotations.Where;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -26,7 +27,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Where(clause = "IS_DELETED = false")
 @SQLDelete(sql = "UPDATE " + AppConstants.POST_TABLE + " SET IS_DELETED = true WHERE POST_ID = ?")
-@Table(name = AppConstants.POST_TABLE)
+@Table(name = AppConstants.POST_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
 public class Post {
 
     @Id
@@ -49,7 +50,7 @@ public class Post {
     @ManyToMany
     private Set<AppUser> upvotes;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     private Set<AppUser> downvotes;
 
     @Column(name = "IS_DELETED")

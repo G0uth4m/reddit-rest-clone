@@ -12,6 +12,7 @@ import com.goutham.redditservice.entity.Post;
 import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
 import com.goutham.redditservice.exception.CommunityAlreadyExistsException;
 import com.goutham.redditservice.exception.CommunityNotFoundException;
+import com.goutham.redditservice.repository.AppUserRepository;
 import com.goutham.redditservice.repository.CommunityRepository;
 import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,9 @@ public class CommunityService {
 
     @Autowired
     private AppUserService appUserService;
+
+    @Autowired
+    private AppUserRepository appUserRepository;
 
     public CommunityDTO createCommunity(CommunityCreationDTO communityCreationDTO) {
         AppUser appUser = appUserService.getUserDAO(communityCreationDTO.getCreatedBy());
@@ -114,19 +118,6 @@ public class CommunityService {
         communityRepository.deleteById(community.getCommunityId());
     }
 
-    public List<AppUserDTO> getCommunityMembers(String communityName) {
-        Community community = getCommunityDAO(communityName);
-        return community.getMembers().stream()
-                .map(appUser -> AppUserDTO.builder()
-                        .userId(appUser.getUserId())
-                        .username(appUser.getUsername())
-                        .email(appUser.getEmail())
-                        .profilePicUrl(appUser.getProfilePicUrl())
-                        .karma(appUser.getKarma())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
     public void addMemberToCommunity(String communityName, CommunityJoinDTO communityJoinDTO) {
         AppUser appUser = appUserService.getUserDAO(communityJoinDTO.getUsername());
         Community community = getCommunityDAO(communityName);
@@ -171,5 +162,23 @@ public class CommunityService {
             log.error("Community: {} does not exist", communityName);
             return new CommunityNotFoundException("Community does not exist");
         });
+    }
+
+    public List<AppUserDTO> getCommunityMembers(String communityName, Pageable pageable) {
+        if (!communityRepository.existsByCommunityName(communityName)) {
+            log.error("Community: {} does not exist", communityName);
+            throw new CommunityNotFoundException("Community does not exist");
+        }
+
+        Page<AppUser> membersPage = appUserRepository.findAllByCommunities_CommunityName(communityName, pageable);
+        return membersPage.stream()
+                .map(appUser -> AppUserDTO.builder()
+                        .userId(appUser.getUserId())
+                        .username(appUser.getUsername())
+                        .email(appUser.getEmail())
+                        .profilePicUrl(appUser.getProfilePicUrl())
+                        .karma(appUser.getKarma())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

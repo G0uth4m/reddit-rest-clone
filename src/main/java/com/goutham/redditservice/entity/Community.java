@@ -10,9 +10,12 @@ import org.hibernate.annotations.Where;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
@@ -26,7 +29,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Where(clause = "IS_DELETED = false")
 @SQLDelete(sql = "UPDATE " + AppConstants.COMMUNITY_TABLE + " SET IS_DELETED = true WHERE COMMUNITY_ID = ?")
-@Table(name = AppConstants.COMMUNITY_TABLE)
+@Table(name = AppConstants.COMMUNITY_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
 public class Community {
 
     @Id
@@ -46,7 +49,12 @@ public class Community {
     @ManyToOne
     private AppUser createdBy;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "communities_members",
+            inverseJoinColumns = {@JoinColumn(name = "members_user_id")},
+            joinColumns = {@JoinColumn(name = "community_community_id")}
+    )
     private Set<AppUser> members;
 
     @Column(name = "IS_DELETED")
