@@ -90,19 +90,25 @@ public class CommunityController {
     }
 
     @GetMapping("/{communityName}/members")
-    public CollectionModel<EntityModel<AppUserDTO>> getCommunityMembers(@PathVariable String communityName) {
-        List<AppUserDTO> communityMembers = communityService.getCommunityMembers(communityName);
+    public CollectionModel<EntityModel<AppUserDTO>> getCommunityMembers(
+            @PathVariable String communityName,
+            @ParameterObject Pageable pageable
+    ) {
+        List<AppUserDTO> communityMembers = communityService.getCommunityMembers(communityName, pageable);
 
         List<EntityModel<AppUserDTO>> communityMemberEntityModels = communityMembers.stream()
                 .map(communityMember -> EntityModel.of(
                         communityMember,
-                        linkTo(methodOn(AppUserController.class).getAppUser(communityMember.getUsername())).withSelfRel(),
-                        linkTo(methodOn(AppUserController.class).getAppUsers(Pageable.unpaged())).withRel("users")))
+                        linkTo(methodOn(AppUserController.class).getAppUser(communityMember.getUsername()))
+                                .withSelfRel(),
+                        linkTo(methodOn(AppUserController.class).getAppUsers(Pageable.unpaged()))
+                                .withRel("users")))
                 .collect(Collectors.toList());
 
         return CollectionModel.of(
                 communityMemberEntityModels,
-                linkTo(methodOn(CommunityController.class).getCommunityMembers(communityName)).withSelfRel()
+                linkTo(methodOn(CommunityController.class).getCommunityMembers(communityName, Pageable.unpaged()))
+                        .withSelfRel()
         );
     }
 

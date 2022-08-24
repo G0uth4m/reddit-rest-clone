@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Where(clause = "IS_DELETED = false")
 @SQLDelete(sql = "UPDATE " + AppConstants.COMMENTS_TABLE + " SET IS_DELETED = true WHERE COMMENT_ID = ?")
-@Table(name = AppConstants.COMMENTS_TABLE)
+@Table(name = AppConstants.COMMENTS_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
 public class Comment {
 
     @Id

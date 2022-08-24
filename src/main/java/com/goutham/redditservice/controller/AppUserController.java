@@ -3,6 +3,7 @@ package com.goutham.redditservice.controller;
 import com.goutham.redditservice.dto.AppUserCreationDTO;
 import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.AppUserUpdationDTO;
+import com.goutham.redditservice.dto.CommunityDTO;
 import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.service.AppUserService;
 import org.springdoc.api.annotations.ParameterObject;
@@ -102,6 +103,28 @@ public class AppUserController {
         return CollectionModel.of(
                 postEntityModels,
                 linkTo(methodOn(AppUserController.class).getPosts(username, Pageable.unpaged())).withRel("posts")
+        );
+    }
+
+    @GetMapping("/{username}/communities")
+    public CollectionModel<EntityModel<CommunityDTO>> getUserCommunities(
+            @PathVariable String username, @ParameterObject Pageable pageable
+    ) {
+        List<CommunityDTO> communities = appUserService.getUserCommunities(username, pageable);
+
+        List<EntityModel<CommunityDTO>> communityEntityModels = communities.stream()
+                .map(communityDTO -> EntityModel.of(
+                        communityDTO,
+                        linkTo(methodOn(CommunityController.class).getCommunity(communityDTO.getCommunityName()))
+                                .withSelfRel(),
+                        linkTo(methodOn(AppUserController.class).getUserCommunities(username, Pageable.unpaged()))
+                                .withRel("user-communities")
+                )).collect(Collectors.toList());
+        
+        return CollectionModel.of(
+                communityEntityModels,
+                linkTo(methodOn(AppUserController.class).getUserCommunities(username, Pageable.unpaged()))
+                        .withRel("user-communities")
         );
     }
 }
