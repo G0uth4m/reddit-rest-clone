@@ -1,5 +1,6 @@
 package com.goutham.redditservice.service;
 
+import com.goutham.redditservice.association.CommunityUserAssociation;
 import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.CommunityCreationDTO;
 import com.goutham.redditservice.dto.CommunityDTO;
@@ -10,10 +11,13 @@ import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Community;
 import com.goutham.redditservice.entity.Post;
 import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
+import com.goutham.redditservice.exception.AppUserNotMemberOfCommunityException;
 import com.goutham.redditservice.exception.CommunityAlreadyExistsException;
 import com.goutham.redditservice.exception.CommunityNotFoundException;
+import com.goutham.redditservice.key.CommunityUserAssociationKey;
 import com.goutham.redditservice.repository.AppUserRepository;
 import com.goutham.redditservice.repository.CommunityRepository;
+import com.goutham.redditservice.repository.CommunityUserAssociationRepository;
 import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +37,6 @@ public class CommunityService {
     @Autowired
     private CommunityRepository communityRepository;
 
-
     @Autowired
     private PostRepository postRepository;
 
@@ -42,6 +45,9 @@ public class CommunityService {
 
     @Autowired
     private AppUserRepository appUserRepository;
+
+    @Autowired
+    private CommunityUserAssociationRepository communityUserAssociationRepository;
 
     public CommunityDTO createCommunity(CommunityCreationDTO communityCreationDTO) {
         AppUser appUser = appUserService.getUserDAO(communityCreationDTO.getCreatedBy());
@@ -122,24 +128,35 @@ public class CommunityService {
         AppUser appUser = appUserService.getUserDAO(communityJoinDTO.getUsername());
         Community community = getCommunityDAO(communityName);
 
-        if (community.getMembers().contains(appUser)) {
-            log.error("User: {} already part of community: {}", appUser.getUsername(), community.getCommunityName());
+        CommunityUserAssociationKey communityUserAssociationKey = CommunityUserAssociationKey.builder()
+                .userId(appUser.getUserId())
+                .communityId(community.getCommunityId())
+                .build();
+        if (communityUserAssociationRepository.existsById(communityUserAssociationKey)) {
+            log.error("User: {} already part of community: {}", communityJoinDTO.getUsername(), communityName);
             throw new AppUserAlreadyExistsException("User already part of community");
         }
-        community.getMembers().add(appUser);
-        communityRepository.save(community);
+
+        CommunityUserAssociation communityUserAssociation = CommunityUserAssociation.builder()
+                .communityUserAssociationKey(communityUserAssociationKey)
+                .createdAt(LocalDateTime.now())
+                .build();
+        communityUserAssociationRepository.save(communityUserAssociation);
     }
 
     public void removeMemberFromCommunity(String communityName, String username) {
         AppUser appUser = appUserService.getUserDAO(username);
         Community community = getCommunityDAO(communityName);
 
-        if (!community.getMembers().contains(appUser)) {
-            log.error("User: {} not part of community: {}", appUser.getUsername(), community.getCommunityName());
-            throw new AppUserAlreadyExistsException("User not part of community");
+        CommunityUserAssociationKey communityUserAssociationKey = CommunityUserAssociationKey.builder()
+                .userId(appUser.getUserId())
+                .communityId(community.getCommunityId())
+                .build();
+        if (!communityUserAssociationRepository.existsById(communityUserAssociationKey)) {
+            log.error("User: {} not part of community: {}", username, communityName);
+            throw new AppUserNotMemberOfCommunityException("User not part of community");
         }
-        community.getMembers().remove(appUser);
-        communityRepository.save(community);
+        communityUserAssociationRepository.deleteById(communityUserAssociationKey);
     }
 
     public List<PostDTO> getCommunityPosts(String communityName, Pageable pageable) {

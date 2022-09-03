@@ -1,9 +1,10 @@
 package com.goutham.redditservice.constant;
 
 public class AppConstants {
-    public static final String APP_USERS_TABLE = "APP_USERS";
-    public static final String COMMUNITY_TABLE = "COMMUNITIES";
-    public static final String POST_TABLE = "POSTS";
-    public static final String COMMENTS_TABLE = "COMMENTS";
-    public static final String REDDIT_CLONE_SCHEMA = "REDDIT_CLONE";
+    public static final String APP_USER_TABLE = "app_user";
+    public static final String COMMUNITY_TABLE = "community";
+    public static final String POST_TABLE = "post";
+    public static final String COMMENT_TABLE = "comment";
+    public static final String COMMUNITY_USER_MAPPING_TABLE = "community_user";
+    public static final String REDDIT_CLONE_SCHEMA = "reddit_clone";
 }
