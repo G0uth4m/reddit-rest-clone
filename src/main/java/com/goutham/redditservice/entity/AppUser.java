@@ -8,7 +8,16 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
+import javax.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -17,45 +26,45 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Where(clause = "IS_DELETED = false")
-@SQLDelete(sql = "UPDATE " + AppConstants.APP_USERS_TABLE + " SET IS_DELETED = true WHERE USER_ID = ?")
-@Table(name = AppConstants.APP_USERS_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
+@Where(clause = "is_deleted = false")
+@SQLDelete(sql = "UPDATE " + AppConstants.APP_USER_TABLE + " SET is_deleted = true WHERE user_id = ?")
+@Table(name = AppConstants.APP_USER_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
 public class AppUser {
 
     @Id
-    @Column(name = "USER_ID", nullable = false)
+    @Column(name = "user_id", nullable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
 
-    @Column(name = "USERNAME", nullable = false, unique = true)
+    @Column(name = "username", nullable = false, unique = true)
     private String username;
 
-    @Column(name = "PASSWORD", nullable = false)
+    @Column(name = "password", nullable = false)
     private String password;
 
-    @Column(name = "EMAIL", nullable = false)
+    @Column(name = "email", nullable = false)
     private String email;
 
-    @Column(name = "PROFILE_PIC_URL")
+    @Column(name = "profile_pic_url")
     private String profilePicUrl;
 
-    @Column(name = "KARMA")
+    @Column(name = "karma")
     private Integer karma;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "communities_members",
-            joinColumns = {@JoinColumn(name = "members_user_id")},
-            inverseJoinColumns = {@JoinColumn(name = "community_community_id")}
+            name = AppConstants.COMMUNITY_USER_MAPPING_TABLE,
+            joinColumns = {@JoinColumn(name = "user_id")},
+            inverseJoinColumns = {@JoinColumn(name = "community_id")}
     )
     private Set<Community> communities;
 
-    @Column(name = "IS_DELETED")
+    @Column(name = "is_deleted")
     private Boolean isDeleted;
 
-    @Column(name = "CREATED_AT")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "UPDATED_AT")
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

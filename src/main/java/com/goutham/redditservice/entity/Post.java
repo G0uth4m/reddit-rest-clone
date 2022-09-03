@@ -25,20 +25,20 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Where(clause = "IS_DELETED = false")
-@SQLDelete(sql = "UPDATE " + AppConstants.POST_TABLE + " SET IS_DELETED = true WHERE POST_ID = ?")
+@Where(clause = "is_deleted = false")
+@SQLDelete(sql = "UPDATE " + AppConstants.POST_TABLE + " SET is_deleted = true WHERE post_id = ?")
 @Table(name = AppConstants.POST_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
 public class Post {
 
     @Id
-    @Column(name = "POST_ID", nullable = false)
+    @Column(name = "post_id", nullable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long postId;
 
-    @Column(name = "TITLE", nullable = false)
+    @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "CONTENT", nullable = false)
+    @Column(name = "content", nullable = false)
     private String content;
 
     @ManyToOne
@@ -53,12 +53,12 @@ public class Post {
     @ManyToMany(fetch = FetchType.LAZY)
     private Set<AppUser> downvotes;
 
-    @Column(name = "IS_DELETED")
+    @Column(name = "is_deleted")
     private Boolean isDeleted;
 
-    @Column(name = "CREATED_AT")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "UPDATED_AT")
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

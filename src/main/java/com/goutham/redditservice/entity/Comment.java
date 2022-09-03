@@ -22,17 +22,17 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Where(clause = "IS_DELETED = false")
-@SQLDelete(sql = "UPDATE " + AppConstants.COMMENTS_TABLE + " SET IS_DELETED = true WHERE COMMENT_ID = ?")
-@Table(name = AppConstants.COMMENTS_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
+@Where(clause = "is_deleted = false")
+@SQLDelete(sql = "UPDATE " + AppConstants.COMMENT_TABLE + " SET is_deleted = true WHERE comment_id = ?")
+@Table(name = AppConstants.COMMENT_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
 public class Comment {
 
     @Id
-    @Column(name = "COMMENT_ID", nullable = false)
+    @Column(name = "comment_id", nullable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long commentId;
 
-    @Column(name = "CONTENT", nullable = false)
+    @Column(name = "content", nullable = false)
     private String content;
 
     @ManyToOne
@@ -41,12 +41,12 @@ public class Comment {
     @ManyToOne
     private AppUser author;
 
-    @Column(name = "IS_DELETED")
+    @Column(name = "is_deleted")
     private Boolean isDeleted;
 
-    @Column(name = "CREATED_AT")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "UPDATED_AT")
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
