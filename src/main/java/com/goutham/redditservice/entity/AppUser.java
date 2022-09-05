@@ -1,5 +1,6 @@
 package com.goutham.redditservice.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.goutham.redditservice.constant.AppConstants;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,14 +51,6 @@ public class AppUser {
 
     @Column(name = "karma")
     private Integer karma;
-
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = AppConstants.COMMUNITY_USER_MAPPING_TABLE,
-            joinColumns = {@JoinColumn(name = "user_id")},
-            inverseJoinColumns = {@JoinColumn(name = "community_id")}
-    )
-    private Set<Community> communities;
 
     @Column(name = "is_deleted")
     private Boolean isDeleted;
