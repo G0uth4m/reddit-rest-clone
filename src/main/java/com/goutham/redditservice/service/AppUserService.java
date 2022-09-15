@@ -7,11 +7,10 @@ import com.goutham.redditservice.dto.CommunityDTO;
 import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Community;
-import com.goutham.redditservice.entity.Post;
 import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
 import com.goutham.redditservice.exception.AppUserNotFoundException;
 import com.goutham.redditservice.repository.AppUserRepository;
-import com.goutham.redditservice.repository.CommunityRepository;
+import com.goutham.redditservice.repository.CommunityUserAssociationRepository;
 import com.goutham.redditservice.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +34,7 @@ public class AppUserService {
     private PostRepository postRepository;
 
     @Autowired
-    private CommunityRepository communityRepository;
+    private CommunityUserAssociationRepository communityUserAssociationRepository;
 
     public AppUserDTO createAppUser(AppUserCreationDTO appUserCreationDTO) {
         if (appUserRepository.existsByUsername(appUserCreationDTO.getUsername())) {
@@ -112,23 +111,8 @@ public class AppUserService {
     }
 
     public List<PostDTO> getPostsByUser(String username, Pageable pageable) {
-        if (!appUserRepository.existsByUsername(username)) {
-            log.error("User: {} does not exist", username);
-            throw new AppUserNotFoundException("User does not exist");
-        }
-
-        Page<Post> postsPage = postRepository.findAllByAuthor_Username(username, pageable);
-        return postsPage.stream()
-                .map(post -> PostDTO.builder()
-                        .postId(post.getPostId())
-                        .title(post.getTitle())
-                        .author(post.getAuthor().getUsername())
-                        .content(post.getContent())
-                        .community(post.getCommunity().getCommunityName())
-                        .votes((long) (post.getUpvotes().size() - post.getDownvotes().size()))
-                        .createdAt(post.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
+        AppUser appUser = getUserDAO(username);
+        return postRepository.findAllPostDTOByUserId(appUser.getUserId(), pageable).toList();
     }
 
     public AppUser getUserDAO(String username) {
@@ -139,7 +123,9 @@ public class AppUserService {
     }
 
     public List<CommunityDTO> getUserCommunities(String username, Pageable pageable) {
-        Page<Community> communitiesPage = communityRepository.findAllByMembers_Username(username, pageable);
+        AppUser appUser = getUserDAO(username);
+        Page<Community> communitiesPage = communityUserAssociationRepository
+                .findAllByUserId(appUser.getUserId(), pageable);
         return communitiesPage.stream()
                 .map(community -> CommunityDTO.builder()
                         .communityId(community.getCommunityId())

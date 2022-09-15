@@ -9,7 +9,6 @@ import com.goutham.redditservice.dto.CommunityUpdationDTO;
 import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Community;
-import com.goutham.redditservice.entity.Post;
 import com.goutham.redditservice.exception.AppUserAlreadyExistsException;
 import com.goutham.redditservice.exception.AppUserNotMemberOfCommunityException;
 import com.goutham.redditservice.exception.CommunityAlreadyExistsException;
@@ -26,8 +25,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -62,13 +62,32 @@ public class CommunityService {
                 .about(communityCreationDTO.getAbout())
                 .profilePicUrl(communityCreationDTO.getProfilePicUrl())
                 .createdBy(appUser)
-                .members(Collections.singleton(appUser))
                 .isDeleted(false)
                 .createdAt(currentDateTime)
                 .updatedAt(currentDateTime)
                 .build();
 
         Community savedCommunity = communityRepository.save(community);
+
+        // Add owner of community as member to the newly created community
+        CompletableFuture.supplyAsync(() -> {
+            CommunityUserAssociation communityUserAssociation = CommunityUserAssociation.builder()
+                    .communityUserAssociationKey(CommunityUserAssociationKey.builder()
+                            .userId(appUser.getUserId())
+                            .communityId(community.getCommunityId())
+                            .build())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            return communityUserAssociationRepository.save(communityUserAssociation);
+        }).whenComplete((communityUserAssociation, throwable) -> {
+            if (Objects.nonNull(throwable)) {
+                log.error("Failed while adding owner: {} as default member to community: {} with error: ",
+                        appUser.getUsername(), community.getCommunityName(), throwable);
+            } else {
+                log.info("Added owner: {} as default member to community: {}",
+                        appUser.getUsername(), community.getCommunityName());
+            }
+        });
 
         return CommunityDTO.builder()
                 .communityId(savedCommunity.getCommunityId())
@@ -160,18 +179,8 @@ public class CommunityService {
     }
 
     public List<PostDTO> getCommunityPosts(String communityName, Pageable pageable) {
-        Page<Post> postsPage = postRepository.findAllByCommunity_CommunityName(communityName, pageable);
-        return postsPage.stream()
-                .map(post -> PostDTO.builder()
-                        .postId(post.getPostId())
-                        .title(post.getTitle())
-                        .author(post.getAuthor().getUsername())
-                        .content(post.getContent())
-                        .community(post.getCommunity().getCommunityName())
-                        .votes((long) (post.getUpvotes().size() - post.getDownvotes().size()))
-                        .createdAt(post.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
+        Community community = getCommunityDAO(communityName);
+        return postRepository.findAllPostDTOByCommunityId(community.getCommunityId(), pageable).toList();
     }
 
     public Community getCommunityDAO(String communityName) {
@@ -182,12 +191,12 @@ public class CommunityService {
     }
 
     public List<AppUserDTO> getCommunityMembers(String communityName, Pageable pageable) {
-        if (!communityRepository.existsByCommunityName(communityName)) {
+        Community community = communityRepository.findByCommunityName(communityName).orElseThrow(() -> {
             log.error("Community: {} does not exist", communityName);
-            throw new CommunityNotFoundException("Community does not exist");
-        }
-
-        Page<AppUser> membersPage = appUserRepository.findAllByCommunities_CommunityName(communityName, pageable);
+            return new CommunityNotFoundException("Community does not exist");
+        });
+        Page<AppUser> membersPage = communityUserAssociationRepository
+                .findAllByCommunityId(community.getCommunityId(), pageable);
         return membersPage.stream()
                 .map(appUser -> AppUserDTO.builder()
                         .userId(appUser.getUserId())

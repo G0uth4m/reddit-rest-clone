@@ -2,20 +2,29 @@ package com.goutham.redditservice.service;
 
 import com.goutham.redditservice.dto.PostCreationDTO;
 import com.goutham.redditservice.dto.PostDTO;
+import com.goutham.redditservice.dto.VoteDTO;
 import com.goutham.redditservice.entity.AppUser;
 import com.goutham.redditservice.entity.Community;
 import com.goutham.redditservice.entity.Post;
+import com.goutham.redditservice.entity.Vote;
+import com.goutham.redditservice.enums.VoteTypeEnum;
 import com.goutham.redditservice.exception.AppUserNotMemberOfCommunityException;
 import com.goutham.redditservice.exception.DuplicateVoteException;
 import com.goutham.redditservice.exception.PostNotFoundException;
 import com.goutham.redditservice.exception.VoteNotFoundException;
+import com.goutham.redditservice.key.CommunityUserAssociationKey;
+import com.goutham.redditservice.key.VoteKey;
+import com.goutham.redditservice.repository.CommunityUserAssociationRepository;
 import com.goutham.redditservice.repository.PostRepository;
+import com.goutham.redditservice.repository.VoteRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -30,11 +39,21 @@ public class PostService {
     @Autowired
     private CommunityService communityService;
 
+    @Autowired
+    private VoteRepository voteRepository;
+
+    @Autowired
+    private CommunityUserAssociationRepository communityUserAssociationRepository;
+
     public PostDTO createPost(PostCreationDTO postCreationDTO) {
         AppUser appUser = appUserService.getUserDAO(postCreationDTO.getAuthor());
         Community community = communityService.getCommunityDAO(postCreationDTO.getCommunity());
 
-        if (!community.getMembers().contains(appUser)) {
+        CommunityUserAssociationKey communityUserAssociationKey = CommunityUserAssociationKey.builder()
+                .communityId(community.getCommunityId())
+                .userId(appUser.getUserId())
+                .build();
+        if (!communityUserAssociationRepository.existsById(communityUserAssociationKey)) {
             log.error("User: {} not member of community: {}", appUser.getUsername(), community.getCommunityName());
             throw new AppUserNotMemberOfCommunityException("User not member of community");
         }
@@ -45,37 +64,50 @@ public class PostService {
                 .content(postCreationDTO.getContent())
                 .author(appUser)
                 .community(community)
-                .upvotes(Collections.singleton(appUser))
-                .downvotes(Collections.emptySet())
                 .isDeleted(false)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
 
         Post savedPost = postRepository.save(post);
+
+        CompletableFuture.supplyAsync(() -> {
+            Vote vote = Vote.builder()
+                    .voteKey(VoteKey.builder()
+                            .userId(appUser.getUserId())
+                            .postId(post.getPostId())
+                            .build())
+                    .voteType(VoteTypeEnum.UPVOTE.value())
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            return voteRepository.save(vote);
+        }).whenComplete((vote, throwable) -> {
+            if (Objects.nonNull(throwable)) {
+                log.error("Failed while adding default upvote to post: {} by author: {} with error: ",
+                        vote.getVoteKey().getPostId(), vote.getVoteKey().getUserId(), throwable);
+            } else {
+                log.info("Added default upvote for post: {} by author: {}",
+                        vote.getVoteKey().getPostId(), vote.getVoteKey().getUserId());
+            }
+        });
+
         return PostDTO.builder()
                 .postId(savedPost.getPostId())
                 .title(savedPost.getTitle())
-                .author(savedPost.getAuthor().getUsername())
+                .author(appUser.getUsername())
                 .content(savedPost.getContent())
-                .community(savedPost.getCommunity().getCommunityName())
-                .votes((long) (savedPost.getUpvotes().size() - savedPost.getDownvotes().size()))
+                .community(community.getCommunityName())
+                .votes(1L)
                 .createdAt(savedPost.getCreatedAt())
                 .build();
     }
 
     public PostDTO getPost(Long postId) {
-        Post post = getPostDAO(postId);
-
-        return PostDTO.builder()
-                .postId(post.getPostId())
-                .title(post.getTitle())
-                .author(post.getAuthor().getUsername())
-                .content(post.getContent())
-                .community(post.getCommunity().getCommunityName())
-                .votes((long) (post.getUpvotes().size() - post.getDownvotes().size()))
-                .createdAt(post.getCreatedAt())
-                .build();
+        return postRepository.findPostDTOById(postId).orElseThrow(() -> {
+            log.error("Post with id: {} does not exist", postId);
+            return new PostNotFoundException("Post does not exist");
+        });
     }
 
     public void deletePost(Long postId) {
@@ -86,97 +118,71 @@ public class PostService {
         postRepository.deleteById(postId);
     }
 
-    public PostDTO upvotePost(Long postId, String username) {
+    public PostDTO votePost(Long postId, VoteDTO voteDTO) {
         Post post = getPostDAO(postId);
-        AppUser appUser = appUserService.getUserDAO(username);
+        AppUser appUser = appUserService.getUserDAO(voteDTO.getUsername());
 
-        if (post.getUpvotes().contains(appUser)) {
-            log.error("Duplicate upvote by user: {} on post: {}", username, post);
-            throw new DuplicateVoteException("Duplicate vote");
+        VoteKey voteKey = VoteKey.builder()
+                .postId(post.getPostId())
+                .userId(appUser.getUserId())
+                .build();
+
+        Optional<Vote> voteOptional = voteRepository.findById(voteKey);
+        if (voteOptional.isPresent()) {
+            Vote vote = voteOptional.get();
+            if (vote.getVoteType() == voteDTO.getVoteType().value()) {
+                log.error("Duplicate vote by user: {} on post: {}", voteDTO.getUsername(), post);
+                throw new DuplicateVoteException("Duplicate vote");
+            } else {
+                vote.setVoteType(voteDTO.getVoteType().value());
+                vote.setUpdatedAt(LocalDateTime.now());
+                voteRepository.save(vote);
+            }
+        } else {
+            LocalDateTime now = LocalDateTime.now();
+            Vote vote = Vote.builder()
+                    .voteKey(voteKey)
+                    .voteType(voteDTO.getVoteType().value())
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            voteRepository.save(vote);
         }
 
-        post.getDownvotes().remove(appUser);
-        post.getUpvotes().add(appUser);
-        Post savedPost = postRepository.save(post);
-
         return PostDTO.builder()
-                .postId(savedPost.getPostId())
-                .title(savedPost.getTitle())
-                .author(savedPost.getAuthor().getUsername())
-                .content(savedPost.getContent())
-                .community(savedPost.getCommunity().getCommunityName())
-                .votes((long) (savedPost.getUpvotes().size() - savedPost.getDownvotes().size()))
-                .createdAt(savedPost.getCreatedAt())
+                .postId(post.getPostId())
+                .title(post.getTitle())
+                .author(post.getAuthor().getUsername())
+                .content(post.getContent())
+                .community(post.getCommunity().getCommunityName())
+                .votes(voteRepository.getVoteCountByPostId(postId))
+                .createdAt(post.getCreatedAt())
                 .build();
     }
 
-    public PostDTO removeUpvote(Long postId, String username) {
+    public PostDTO removeVote(Long postId, String username) {
         Post post = getPostDAO(postId);
         AppUser appUser = appUserService.getUserDAO(username);
 
-        if (!post.getUpvotes().contains(appUser)) {
-            log.error("Upvote not found for post: {} by user: {}", postId, username);
-            throw new VoteNotFoundException("Upvote not found");
-        }
-
-        post.getUpvotes().remove(appUser);
-        Post savedPost = postRepository.save(post);
-
-        return PostDTO.builder()
-                .postId(savedPost.getPostId())
-                .title(savedPost.getTitle())
-                .author(savedPost.getAuthor().getUsername())
-                .content(savedPost.getContent())
-                .community(savedPost.getCommunity().getCommunityName())
-                .votes((long) (savedPost.getUpvotes().size() - savedPost.getDownvotes().size()))
-                .createdAt(savedPost.getCreatedAt())
+        VoteKey voteKey = VoteKey.builder()
+                .postId(post.getPostId())
+                .userId(appUser.getUserId())
                 .build();
-    }
 
-    public PostDTO downvotePost(Long postId, String username) {
-        Post post = getPostDAO(postId);
-        AppUser appUser = appUserService.getUserDAO(username);
-
-        if (post.getDownvotes().contains(appUser)) {
-            log.error("Duplicate upvote by user: {} on post: {}", username, post);
-            throw new DuplicateVoteException("Duplicate vote");
+        if (!voteRepository.existsById(voteKey)) {
+            log.error("Vote not found for post: {} by user: {}", postId, username);
+            throw new VoteNotFoundException("Vote not found");
         }
-
-        post.getUpvotes().remove(appUser);
-        post.getDownvotes().add(appUser);
-        Post savedPost = postRepository.save(post);
+        voteRepository.deleteById(voteKey);
 
         return PostDTO.builder()
-                .postId(savedPost.getPostId())
-                .title(savedPost.getTitle())
-                .author(savedPost.getAuthor().getUsername())
-                .content(savedPost.getContent())
-                .community(savedPost.getCommunity().getCommunityName())
-                .votes((long) (savedPost.getUpvotes().size() - savedPost.getDownvotes().size()))
-                .createdAt(savedPost.getCreatedAt())
-                .build();
-    }
-
-    public PostDTO removeDownvote(Long postId, String username) {
-        Post post = getPostDAO(postId);
-        AppUser appUser = appUserService.getUserDAO(username);
-
-        if (!post.getDownvotes().contains(appUser)) {
-            log.error("Downvote not found for post: {} by user: {}", postId, username);
-            throw new VoteNotFoundException("Downvote not found");
-        }
-
-        post.getDownvotes().remove(appUser);
-        Post savedPost = postRepository.save(post);
-
-        return PostDTO.builder()
-                .postId(savedPost.getPostId())
-                .title(savedPost.getTitle())
-                .author(savedPost.getAuthor().getUsername())
-                .content(savedPost.getContent())
-                .community(savedPost.getCommunity().getCommunityName())
-                .votes((long) (savedPost.getUpvotes().size() - savedPost.getDownvotes().size()))
-                .createdAt(savedPost.getCreatedAt())
+                .postId(post.getPostId())
+                .title(post.getTitle())
+                .author(post.getAuthor().getUsername())
+                .content(post.getContent())
+                .community(post.getCommunity().getCommunityName())
+                .votes(voteRepository.getVoteCountByPostId(postId))
+                .createdAt(post.getCreatedAt())
                 .build();
     }
 

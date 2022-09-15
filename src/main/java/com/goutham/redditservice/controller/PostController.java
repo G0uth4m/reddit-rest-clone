@@ -52,9 +52,9 @@ public class PostController {
         postService.deletePost(postId);
     }
 
-    @PostMapping("/{postId}/upvote")
-    public EntityModel<PostDTO> upvotePost(@PathVariable Long postId, @RequestBody VoteDTO voteDTO) {
-        PostDTO postDTO = postService.upvotePost(postId, voteDTO.getUsername());
+    @PostMapping("/{postId}/vote")
+    public EntityModel<PostDTO> votePost(@PathVariable Long postId, @RequestBody VoteDTO voteDTO) {
+        PostDTO postDTO = postService.votePost(postId, voteDTO);
         return EntityModel.of(
                 postDTO,
                 linkTo(methodOn(PostController.class).getPost(postDTO.getPostId())).withSelfRel(),
@@ -63,31 +63,9 @@ public class PostController {
         );
     }
 
-    @PostMapping("/{postId}/downvote")
-    public EntityModel<PostDTO> downvotePost(@PathVariable Long postId, @RequestBody VoteDTO voteDTO) {
-        PostDTO postDTO = postService.downvotePost(postId, voteDTO.getUsername());
-        return EntityModel.of(
-                postDTO,
-                linkTo(methodOn(PostController.class).getPost(postDTO.getPostId())).withSelfRel(),
-                linkTo(methodOn(CommunityController.class).getPosts(postDTO.getCommunity(), Pageable.unpaged())).withRel("communityPosts"),
-                linkTo(methodOn(AppUserController.class).getPosts(postDTO.getAuthor(), Pageable.unpaged())).withRel("userPosts")
-        );
-    }
-
-    @DeleteMapping("/{postId}/upvote/{username}")
-    public EntityModel<PostDTO> removeUpvote(@PathVariable Long postId, @PathVariable String username) {
-        PostDTO postDTO = postService.removeUpvote(postId, username);
-        return EntityModel.of(
-                postDTO,
-                linkTo(methodOn(PostController.class).getPost(postDTO.getPostId())).withSelfRel(),
-                linkTo(methodOn(CommunityController.class).getPosts(postDTO.getCommunity(), Pageable.unpaged())).withRel("communityPosts"),
-                linkTo(methodOn(AppUserController.class).getPosts(postDTO.getAuthor(), Pageable.unpaged())).withRel("userPosts")
-        );
-    }
-
-    @DeleteMapping("/{postId}/downvote/{username}")
-    public EntityModel<PostDTO> removeDownvote(@PathVariable Long postId, @PathVariable String username) {
-        PostDTO postDTO = postService.removeDownvote(postId, username);
+    @DeleteMapping("/{postId}/vote/{username}")
+    public EntityModel<PostDTO> removeVote(@PathVariable Long postId, @PathVariable String username) {
+        PostDTO postDTO = postService.removeVote(postId, username);
         return EntityModel.of(
                 postDTO,
                 linkTo(methodOn(PostController.class).getPost(postDTO.getPostId())).withSelfRel(),

@@ -10,5 +10,4 @@ import java.util.Optional;
 public interface CommunityRepository extends PagingAndSortingRepository<Community, Long> {
     Optional<Community> findByCommunityName(String communityName);
     Boolean existsByCommunityName(String communityName);
-    Page<Community> findAllByMembers_Username(String username, Pageable pageable);
 }

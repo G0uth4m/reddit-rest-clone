@@ -1,5 +1,6 @@
 package com.goutham.redditservice.dto;
 
+import com.goutham.redditservice.enums.VoteTypeEnum;
 import lombok.Builder;
 import lombok.Data;
 
@@ -7,5 +8,5 @@ import lombok.Data;
 @Builder
 public class VoteDTO {
     private String username;
-    private Integer vote;
+    private VoteTypeEnum voteType;
 }
