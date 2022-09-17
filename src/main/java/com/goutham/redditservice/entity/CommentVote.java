@@ -1,7 +1,7 @@
 package com.goutham.redditservice.entity;
 
 import com.goutham.redditservice.constant.AppConstants;
-import com.goutham.redditservice.key.VoteKey;
+import com.goutham.redditservice.key.CommentVoteKey;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,11 +20,11 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = AppConstants.VOTE_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
-public class Vote {
+@Table(name = AppConstants.COMMENT_VOTE_TABLE, catalog = AppConstants.REDDIT_CLONE_SCHEMA)
+public class CommentVote {
 
     @EmbeddedId
-    private VoteKey voteKey;
+    private CommentVoteKey commentVoteKey;
 
     @ManyToOne
     @JoinColumn(name = "vote_type_id")
