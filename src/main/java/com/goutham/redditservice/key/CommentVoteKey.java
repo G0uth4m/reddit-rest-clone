@@ -14,10 +14,10 @@ import java.io.Serializable;
 @Embeddable
 @NoArgsConstructor
 @AllArgsConstructor
-public class VoteKey implements Serializable {
+public class CommentVoteKey implements Serializable {
 
-    @Column(name = "post_id")
-    private Long postId;
+    @Column(name = "comment_id")
+    private Long commentId;
 
     @Column(name = "user_id")
     private Long userId;

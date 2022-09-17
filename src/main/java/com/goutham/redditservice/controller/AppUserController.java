@@ -3,9 +3,11 @@ package com.goutham.redditservice.controller;
 import com.goutham.redditservice.dto.AppUserCreationDTO;
 import com.goutham.redditservice.dto.AppUserDTO;
 import com.goutham.redditservice.dto.AppUserUpdationDTO;
+import com.goutham.redditservice.dto.CommentDTO;
 import com.goutham.redditservice.dto.CommunityDTO;
 import com.goutham.redditservice.dto.PostDTO;
 import com.goutham.redditservice.service.AppUserService;
+import com.goutham.redditservice.service.CommentService;
 import org.springdoc.api.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +34,9 @@ public class AppUserController {
 
     @Autowired
     private AppUserService appUserService;
+
+    @Autowired
+    private CommentService commentService;
 
 
     @PostMapping
@@ -125,6 +130,27 @@ public class AppUserController {
                 communityEntityModels,
                 linkTo(methodOn(AppUserController.class).getUserCommunities(username, Pageable.unpaged()))
                         .withRel("user-communities")
+        );
+    }
+
+    @GetMapping("/{username}/comments")
+    public CollectionModel<EntityModel<CommentDTO>> getUserComments(
+            @PathVariable String username,
+            @ParameterObject Pageable pageable
+    ) {
+        List<CommentDTO> comments = commentService.getUserComments(username, pageable);
+        List<EntityModel<CommentDTO>> commentsEntityModels = comments.stream()
+                .map(commentDTO -> EntityModel.of(
+                        commentDTO,
+                        linkTo(methodOn(CommentController.class).getComment(commentDTO.getCommentId()))
+                                .withSelfRel(),
+                        linkTo(methodOn(AppUserController.class).getUserComments(username, Pageable.unpaged()))
+                                .withRel("user-comments")
+                )).collect(Collectors.toList());
+
+        return CollectionModel.of(
+                commentsEntityModels,
+                linkTo(methodOn(AppUserController.class).getUserComments(username, Pageable.unpaged())).withSelfRel()
         );
     }
 }
